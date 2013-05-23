@@ -44,7 +44,7 @@ if(!isset($_GET['submit'])) : ?>
   <body>
        <?php
      $db_access = parse_ini_file('/etc/apache2/.my.cnf');
-$mysql = new mysqli('localhost', $db_access['user'], $db_access['password']);
+$mysql = new mysqli($db_access['host'], $db_access['user'], $db_access['password']);
 $dbs = $mysql->query('SHOW DATABASES');
 $dbs = $dbs->fetch_all();
         ?>
