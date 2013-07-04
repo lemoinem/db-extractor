@@ -6,9 +6,17 @@
  */
 
 if (!empty($argv[1]) && $argv[1] == 'update') {
-  file_put_contents(__FILE__, file_get_contents('https://gist.github.com/lavoiesl/2227920/raw/wordpress-change-url.php'));
+  $file = file_get_contents('https://gist.github.com/lavoiesl/2227920/raw/wordpress-change-url.php');
+  $md5 = md5($file);
+  $current = md5_file(__FILE__);
+  if ($md5 == $current) {
+    echo "Already up-to-date.\n";
+  } else {
+    file_put_contents(__FILE__, $file);
+    echo "Updated. MD5: " . md5_file(__FILE__) . PHP_EOL;
+  }
+
   chmod(__FILE__, 0755);
-  echo "Updated. MD5: " . md5_file(__FILE__) . PHP_EOL;
   exit(0);
 }
 
@@ -38,21 +46,27 @@ $fp = fopen($input, "r") or die("can't read $input");
 $ferr = fopen('php://stderr', 'w');
 
 $n = 0;
+$replaces = 0;
+$errors = 0;
 while (!feof($fp)) {
   $line = fgets($fp);
 
   // Serialized string
-  $line = preg_replace_callback('#s:\d+:".*'.$old_url.'#', $replace_serialized, $line);
+  $line = preg_replace_callback('#s:\d+:".*'.$old_url.'#', $replace_serialized, $line, -1, $count);
+  $replaces += $count;
 
   // HTML links, encoded or not
-  $line = preg_replace("# (href|src)=(\"|&quot;)$old_url#", " $1=$2{$new_url}", $line);
+  $line = preg_replace("# (href|src)=(\"|&quot;)$old_url#", " $1=$2{$new_url}", $line, -1, $count);
+  $replaces += $count;
 
   // Simple SQL value
-  $line = preg_replace("#,\s*'$old_url#", ", '$new_url", $line);
+  $line = preg_replace("#,\s*'$old_url#", ", '$new_url", $line, -1, $count);
+  $replaces += $count;
   echo $line;
 
   // Output lines that still mention old-domain.com so you know if it missed a couple
   if ($ferr && ($pos = strpos($line, $old_host)) !== false) {
+    $errors++;
     $excerpt = 30;
     $length = strlen($line);
 
@@ -71,3 +85,9 @@ while (!feof($fp)) {
   $n++;
 }
 fclose($fp);
+
+fwrite($ferr, "Lines: $n\n");
+fwrite($ferr, "Replaced: $replaces\n");
+fwrite($ferr, "Still existing: $errors\n");
+
+fclose($ferr);
