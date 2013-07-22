@@ -28,19 +28,7 @@ if (empty($argv[1]) || empty($argv[2])) {
 $old_url = $argv[1];
 $new_url = $argv[2];
 $input = isset($argv[3]) ? $argv[3] : 'php://stdin';
-$old_host = parse_url($old_url, PHP_URL_HOST);
-
-$length_diff = strlen($new_url) - strlen($old_url);
-
-$replace_serialized = function($matches) use ($old_url, $new_url, $length_diff) {
-  $return = $matches[0];
-  // We do the actual quote escaping here, otherwise preg crashes when string is too long
-  if (preg_match('#s:(\d+):"((?:[^"\\\\]|\\\\.)*)'.$old_url.'#', $return, $m)) {
-    $new_length = $m[1] + $length_diff;
-    $return = "s:$new_length:\"{$m[2]}{$new_url}";
-  }
-  return $return;
-};
+$old_host = trim(parse_url($old_url, PHP_URL_HOST), 'www.');
 
 $fp = fopen($input, "r") or die("can't read $input");
 $ferr = fopen('php://stderr', 'w');
@@ -48,20 +36,64 @@ $ferr = fopen('php://stderr', 'w');
 $n = 0;
 $replaces = 0;
 $errors = 0;
+
+$process_line_factory = function ($old_url, $new_url) use (&$replaces) {
+  $length_diff = strlen($new_url) - strlen($old_url);
+
+  $replace_serialized = function($matches) use ($old_url, $new_url, $length_diff) {
+    $return = $matches[0];
+    // We do the actual quote escaping here, otherwise preg crashes when string is too long
+    if (preg_match('#s:(\d+):"((?:[^"\\\\]|\\\\.)*)'.$old_url.'#', $return, $m)) {
+      $new_length = $m[1] + $length_diff;
+      $return = "s:$new_length:\"{$m[2]}{$new_url}";
+    }
+    return $return;
+  };
+
+  return function ($line) use (&$replaces, $length_diff, $replace_serialized, $old_url, $new_url) {
+    // Serialized string
+    $line = preg_replace_callback('#s:\d+:".*'.$old_url.'#', $replace_serialized, $line, -1, $count);
+    $replaces += $count;
+
+    // HTML links, encoded or not
+    $line = preg_replace("# (href|src)=(\"|&quot;)$old_url#", " $1=$2{$new_url}", $line, -1, $count);
+    $replaces += $count;
+
+    // Simple SQL value
+    $line = preg_replace("#,\s*'$old_url#", ", '$new_url", $line, -1, $count);
+    $replaces += $count;
+
+    return $line;
+  };
+
+};
+
+$processors = array(
+  $process_line_factory($old_url, $new_url),
+);
+
+if (preg_match('/^(https?:\/\/)(www\.)?(.+)$/', $old_url, $matches)) {
+  if ($matches[2]) {
+    $processors[] = $process_line_factory("{$matches[1]}{$matches[3]}", $new_url);
+  } else {
+    $processors[] = $process_line_factory("{$matches[1]}www.{$matches[3]}", $new_url);
+  }
+}
+
 while (!feof($fp)) {
   $line = fgets($fp);
 
-  // Serialized string
-  $line = preg_replace_callback('#s:\d+:".*'.$old_url.'#', $replace_serialized, $line, -1, $count);
-  $replaces += $count;
+  if (strpos($line, $old_host) === false) {
+    // Simple "line contains to skip costly checks"
+    echo $line;
+    $n++;
+    continue;
+  }
 
-  // HTML links, encoded or not
-  $line = preg_replace("# (href|src)=(\"|&quot;)$old_url#", " $1=$2{$new_url}", $line, -1, $count);
-  $replaces += $count;
+  foreach ($processors as $processor) {
+    $line = $processor($line);
+  }
 
-  // Simple SQL value
-  $line = preg_replace("#,\s*'$old_url#", ", '$new_url", $line, -1, $count);
-  $replaces += $count;
   echo $line;
 
   // Output lines that still mention old-domain.com so you know if it missed a couple
