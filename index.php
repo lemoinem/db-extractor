@@ -6,7 +6,7 @@ session_start();
 
 if(!isset($_SESSION['authorized_as'])) {
   try {
-    $openid = new LightOpenID(gethostname());
+    $openid = new LightOpenID(gethostname().'.hosting.wemakecustom.com');
     if(!$openid->mode) {
       $openid->identity = 'https://www.google.com/accounts/o8/id';
       $openid->required = array('contact/email');
