@@ -90,7 +90,7 @@ function get_dump($var) {
 
 header('Content-Type: application/force-download');
 header('Content-Disposition: attachment; filename="'.$_GET['db'].'.'.date('Y-m-d_H-i').'.sql'.(isset($_GET['gzip']) ? '.gz' : '').'"');
-$cmd = 'mysqldump --defaults-extra-file=/etc/apache2/.my.cnf --skip-lock-tables --routines --events --triggers \''. $_GET['db']  .'\'';
+$cmd = 'mysqldump --defaults-extra-file=/etc/apache2/.my.cnf --net-buffer-length=4096 --skip-lock-tables --routines --events --triggers \''. $_GET['db']  .'\'';
 print_debug('Command: '.$cmd);
 $handle = popen($cmd, 'r');
 $err_pipes = array();
