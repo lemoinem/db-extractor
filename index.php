@@ -1,34 +1,42 @@
 <?php
 
+// CONFIG
+
+// emails to allows through Google Login
+$email_regex = '/^([^@]+)@wemakecustom\.com$/';
+
+// END CONFIG
+
 require 'openid.php';
 
 session_start();
 
-if(!isset($_SESSION['authorized_as'])) {
+if (!isset($_SESSION['authorized_as'])) {
   try {
-    $openid = new LightOpenID(gethostname().'.hosting.wemakecustom.com');
-    if(!$openid->mode) {
+    $openid = new LightOpenID($_SERVER['SERVER_NAME']);
+    if (!$openid->mode) {
       $openid->identity = 'https://www.google.com/accounts/o8/id';
       $openid->required = array('contact/email');
       header('Location: ' . $openid->authUrl());
-    } elseif($openid->mode == 'cancel') {
+      die();
+    } elseif ($openid->mode == 'cancel') {
       die('User has canceled authentication!');
     } elseif (!$openid->validate()) {
       die('Invalid authentication!');
     }
-  } catch(ErrorException $e) {
+  } catch (ErrorException $e) {
     echo $e->getMessage();
   }
-  
+
   $id = array();
   $email = $openid->getAttributes();
   $email = $email['contact/email'];
-  
+
   if(!preg_match('/^([^@]+)@wemakecustom\.com$/', $email, $id))
     die('Sorry, only accounts from wemakecustom.com are allowed to login (you logged in as "'.$email.'")');
-  
+
   $id = $id[1];
-  
+
   $_SESSION['authorized_as'] = array($id, $email);
 }
 
@@ -59,9 +67,9 @@ $dbs = $dbs->fetch_all();
       </select><br>
       <input type="checkbox" name="wordpress" id="wordpress"<?php if(isset($_GET['wordpress'])) echo ' checked'; ?>><label for="wordpress">Database wordpress to update</label><br>
       <div id="wp_subform">
-  <label for="src_domain">Source domain: </label><input type="text" name="src_domain" id="src_domain" <?php if(isset($_GET['src_domain'])) echo ' value="'.htmlspecialchars($_GET['src_domain']).'"'; ?>><br>
+         <label for="src_domain">Source domain: </label><input type="text" name="src_domain" id="src_domain" <?php if(isset($_GET['src_domain'])) echo ' value="'.htmlspecialchars($_GET['src_domain']).'"'; ?>><br>
          <label for="dst_domain">Destination domain: </label><input type="text" name="dst_domain" id="dst_domain" <?php if(isset($_GET['dst_domain'])) echo ' value="'.htmlspecialchars($_GET['dst_domain']).'"'; ?>><br>
-      </div> 
+      </div>
          <input type="checkbox" name="gzip" id="gzip"<?php if(isset($_GET['gzip'])) echo ' checked'; ?>><label for="gzip">GZIP</label><br>
       <input type="submit" name="submit"><input type="submit" name="get_url" value="Generate URL">
     </form>
@@ -75,16 +83,19 @@ $dbs = $dbs->fetch_all();
      || false !== strpbrk($_GET['dst_domain'], $forbidden_chars))
     die('Invalid DB name');
 
-function print_debug($message) {
+function print_debug($message)
+{
   if(/**/false/*/true/**/)
     trigger_error($message);
 }
 
-function get_dump($var) {
+function get_dump($var)
+{
   ob_start();
   var_dump($var);
   $dump = ob_get_contents();
   ob_end_clean();
+
   return $dump;
 }
 
@@ -94,8 +105,8 @@ $cmd = 'mysqldump --defaults-extra-file=/etc/apache2/.my.cnf --net-buffer-length
 print_debug('Command: '.$cmd);
 $handle = popen($cmd, 'r');
 $err_pipes = array();
-$cleanup = array( function() use ($handle) { print_debug('Cleaning mysqldump'); pclose($handle); });
-if(isset($_GET['wordpress'])) {
+$cleanup = array( function () use ($handle) { print_debug('Cleaning mysqldump'); pclose($handle); });
+if (isset($_GET['wordpress'])) {
   $pipes = array();
   $cmd = __DIR__.'/wordpress-change-url.php \''.$_GET['src_domain'].'\', \''.$_GET['dst_domain'].'\'';
   trigger_error('Command: '.$cmd);
@@ -109,7 +120,7 @@ if(isset($_GET['wordpress'])) {
   $cleanup[] = function () use ($handle) { print_debug('Cleaning wordpress change stdout'); fclose($handle); };
   $cleanup[] = function () use ($process) { print_debug('Cleaning wordpress change'); proc_close($process); };
 }
-if(isset($_GET['gzip'])) {
+if (isset($_GET['gzip'])) {
   $pipes = array();
   $cmd = 'gzip';
   trigger_error('Command: '.$cmd);
@@ -124,7 +135,7 @@ if(isset($_GET['gzip'])) {
   $cleanup[] = function () use ($process) { print_debug('Cleaning gzip'); proc_close($process); };
 }
 $result = fpassthru($handle);
-foreach($err_pipes as $pipe) {
+foreach ($err_pipes as $pipe) {
   if (!is_resource($pipe)) {
       print_debug(get_dump($pipe));
       continue;
