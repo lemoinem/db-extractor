@@ -12,8 +12,6 @@ $supports_wordpress = is_file(__DIR__.'/wordpress-change-url.php');
 require_once __DIR__.'/vendor/autoload.php';
 
 session_start();
-error_reporting(-1);
-ini_set('display_errors', 'on');
 
 if (isset($_GET['logout'])) {
    unset($_SESSION['access_token']);
