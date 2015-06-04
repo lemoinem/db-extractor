@@ -1,0 +1,15 @@
+{
+    "name": "wemakecustom/db-extractor",
+    "description": "DataBase extractor",
+    "type": "project",
+    "require": {
+        "google/apiclient": "^1.1"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mathieu Lemoine",
+            "email": "mathieu@wemakecustom.com"
+        }
+    ]
+}

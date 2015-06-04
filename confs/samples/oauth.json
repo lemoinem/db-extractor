@@ -1,0 +1,10 @@
+{
+   "web": {
+      "auth_uri": "AUTH_URI",
+      "client_secret":"SECRET",
+      "token_uri":"TOKEN_URI",
+      "client_email":"EMAIL",
+      "client_x509_cert_url":"X509",
+      "auth_provider_x509_cert_url":"X509_PROVIDER"
+   }
+}

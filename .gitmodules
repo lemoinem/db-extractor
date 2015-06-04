@@ -1,6 +1,0 @@
-[submodule "wordpress-change-url"]
-	path = wordpress-change-url
-	url = https://gist.github.com/2227920.git
-[submodule "process-mysqldump"]
-	path = process-mysqldump
-	url = https://gist.github.com/9a08e399fc9832d12794.git
