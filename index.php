@@ -34,6 +34,7 @@ try {
       } else {
          $openid->authenticate($_GET['code']);
          $_SESSION['access_token'] = $openid->getAccessToken();
+         header('Location: '.$uri['redirect_url']);
       }
    } else {
       $openid->setAccessToken($_SESSION['access_token']);
